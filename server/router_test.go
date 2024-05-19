@@ -229,6 +229,64 @@ func TestRouter_AddRoute(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "star method should be created properly",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodGet,
+					path:    "/user/home",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/user/*",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/user/*/id",
+					handler: mockHandler,
+				},
+			},
+			wantTree: map[string]*node{
+				http.MethodGet: {
+					path: "/",
+					children: []*node{
+						{
+							path: "user",
+							children: []*node{
+								{
+									path:     "home",
+									children: make([]*node, 0),
+									handleChains: []HandleFunc{
+										mockHandler,
+									},
+								},
+							},
+							starChild: &node{
+								path: "*",
+								children: []*node{
+									{
+										path:     "id",
+										children: make([]*node, 0),
+										handleChains: []HandleFunc{
+											mockHandler,
+										},
+									},
+								},
+								handleChains: []HandleFunc{
+									mockHandler,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	// mock 方案
@@ -395,6 +453,77 @@ func TestRouter_FindRoute(t *testing.T) {
 			},
 			wantNode:    nil,
 			shouldFound: false,
+		},
+		{
+			name:   "find route that exists with *",
+			method: http.MethodHead,
+			path:   "/user/1",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodHead,
+					path:    "/user",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/*",
+					handler: mockHandler1,
+				},
+			},
+			wantNode: &node{
+				path:     "*",
+				children: make([]*node, 0),
+				handleChains: []HandleFunc{
+					mockHandler1,
+				},
+			},
+			shouldFound: true,
+		},
+		{
+			name:   "find route that exists with complex *",
+			method: http.MethodHead,
+			path:   "/user/2",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodHead,
+					path:    "/user",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/*",
+					handler: mockHandler1,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/*/id",
+					handler: mockHandler,
+				},
+			},
+			wantNode: &node{
+				path: "*",
+				children: []*node{
+					{
+						path:     "id",
+						children: make([]*node, 0),
+						handleChains: []HandleFunc{
+							mockHandler,
+						},
+					},
+				},
+				handleChains: []HandleFunc{
+					mockHandler1,
+				},
+			},
+			shouldFound: true,
 		},
 	}
 

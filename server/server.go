@@ -5,6 +5,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -79,11 +82,18 @@ func (h *HTTPServer) Start() error {
 		}
 	}()
 	<-startCh
+	log.Printf("server already started at address: [%s]\n", h.addr)
 	return nil
 }
 
 // ShutDown implements Server.
 func (h *HTTPServer) ShutDown() error {
+	// 优雅退出
+	// kill -9 是捕捉不到的
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
 	ctx, cancel := context.WithTimeout(context.Background(), h.shutDownTimeout)
 	defer cancel()
 	for {

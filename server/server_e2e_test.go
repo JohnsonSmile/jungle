@@ -17,7 +17,17 @@ func TestServer(t *testing.T) {
 	// require.NoError(t, err)
 
 	h.AddRoute(http.MethodGet, "/user", func(ctx *Context) {
+		ctx.Resp.Write([]byte("hello world"))
+	})
 
+	h.AddRoute(http.MethodGet, "user/*", func(ctx *Context) {
+		vals := ctx.Req.URL.Query()
+		name := vals.Get("name")
+		if name == "" {
+			ctx.Resp.Write([]byte("param error"))
+			return
+		}
+		ctx.Resp.Write([]byte(name))
 	})
 
 	err := h.Start()

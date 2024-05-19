@@ -50,6 +50,21 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 		if seg == "" {
 			continue
 		}
+		// 如果是 *
+		if seg == "*" {
+			next := &node{
+				path:     seg,
+				children: make([]*node, 0),
+			}
+			if cur.starChild == nil {
+				cur.starChild = next
+			}
+			if total == idx+1 {
+				cur.starChild.handleChains = handles
+			}
+			cur = cur.starChild
+			continue
+		}
 
 		// 应该和当前节点的children来比较
 		insertIndex := -1
@@ -70,7 +85,9 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 			// 下一个
 			cur = cur.children[continueIndex]
 			// 这个地方可能会忽略掉,导致出问题.
-			cur.handleChains = handles
+			if total == idx+1 {
+				cur.handleChains = handles
+			}
 			continue
 		}
 
@@ -139,16 +156,27 @@ func (r *router) FindRoute(method string, path string) (n *node, found bool) {
 		if seg == "" {
 			continue
 		}
+
 		// TODO: 二分查找...因为是排序了的...
 		// 查找所有的children
+		shouldMatchStar := true
 		for _, child := range node.children {
 			if child.path == seg {
 				if len(child.handleChains) > 0 &&
 					idx+1 == total {
 					return child, true
 				}
+				shouldMatchStar = false
 				node = child
 			}
+		}
+		if node.starChild != nil && shouldMatchStar {
+			if len(node.starChild.handleChains) > 0 &&
+				idx+1 == total {
+				return node.starChild, true
+			}
+			node = node.starChild
+			continue
 		}
 	}
 	return nil, false
@@ -166,6 +194,8 @@ func (r *router) FindRoute(method string, path string) (n *node, found bool) {
 type node struct {
 	path     string
 	children []*node
+	// 通配符
+	starChild *node
 	// 责任链
 	handleChains []HandleFunc
 }
