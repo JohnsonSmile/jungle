@@ -320,7 +320,7 @@ func TestRouter_AddRoute(t *testing.T) {
 							path:     "users",
 							children: make([]*node, 0),
 							paramChild: &node{
-								path: ":id",
+								path: "id",
 								children: []*node{
 									{
 										path:     "article",
@@ -666,7 +666,7 @@ func TestRouter_FindRoute(t *testing.T) {
 				},
 			},
 			wantNode: &node{
-				path: ":id",
+				path: "id",
 				children: []*node{
 					{
 						path:     "article",
@@ -737,7 +737,7 @@ func TestRouter_FindRoute(t *testing.T) {
 				},
 			},
 			wantNode: &node{
-				path:     ":id",
+				path:     "id",
 				children: make([]*node, 0),
 				handleChains: []HandleFunc{
 					mockHandler1,
@@ -754,9 +754,9 @@ func TestRouter_FindRoute(t *testing.T) {
 		for _, route := range tc.routes {
 			r.AddRoute(route.method, route.path, route.handler)
 		}
-		node, found := r.FindRoute(tc.method, tc.path)
+		matchInfo, found := r.FindRoute(tc.method, tc.path)
 		// 断言
-		require.NoError(t, nodeEqual(tc.wantNode, node))
+		require.NoError(t, nodeEqual(tc.wantNode, matchInfo.node))
 		require.True(t, found == tc.shouldFound)
 	}
 }

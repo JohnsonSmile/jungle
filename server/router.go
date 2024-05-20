@@ -75,8 +75,8 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 				panic("already a star child exists")
 			}
 			next := &node{
-				// path:     strings.Trim(seg, ":"),
-				path:     seg,
+				path: strings.Trim(seg, ":"),
+				// path:     seg,
 				children: make([]*node, 0),
 			}
 			if cur.paramChild == nil {
@@ -158,17 +158,22 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 	}
 }
 
-func (r *router) FindRoute(method string, path string) (n *node, found bool) {
+// 这种路径参数只支持,同名,且唯一一个
+func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool) {
 
 	node, ok := r.tree[method]
 	if !ok {
 		return nil, false
 	}
 
+	var pathParams = make(map[string][]string)
 	// 根路径
 	if node.path == path {
 		if len(node.handleChains) > 0 {
-			return node, true
+			return &MatchNode{
+				node:       node,
+				pathParams: pathParams,
+			}, true
 		}
 		return nil, false
 	}
@@ -187,7 +192,10 @@ func (r *router) FindRoute(method string, path string) (n *node, found bool) {
 			if child.path == seg {
 				if len(child.handleChains) > 0 &&
 					idx+1 == total {
-					return child, true
+					return &MatchNode{
+						node:       child,
+						pathParams: pathParams,
+					}, true
 				}
 				shouldMatchOther = false
 				node = child
@@ -196,9 +204,17 @@ func (r *router) FindRoute(method string, path string) (n *node, found bool) {
 
 		// 路径参数匹配优先级 > *匹配
 		if node.paramChild != nil && shouldMatchOther {
+			// 记录pathParams,传递给最终的叶子节点.
+			if _, ok := pathParams[node.paramChild.path]; !ok {
+				pathParams[node.paramChild.path] = make([]string, 0)
+			}
+			pathParams[node.paramChild.path] = append(pathParams[node.paramChild.path], seg)
 			if len(node.paramChild.handleChains) > 0 &&
 				idx+1 == total {
-				return node.paramChild, true
+				return &MatchNode{
+					node:       node.paramChild,
+					pathParams: pathParams,
+				}, true
 			}
 			node = node.paramChild
 			continue
@@ -208,7 +224,10 @@ func (r *router) FindRoute(method string, path string) (n *node, found bool) {
 		if node.starChild != nil && shouldMatchOther {
 			if len(node.starChild.handleChains) > 0 &&
 				idx+1 == total {
-				return node.starChild, true
+				return &MatchNode{
+					node:       node.starChild,
+					pathParams: pathParams,
+				}, true
 			}
 			node = node.starChild
 			continue
@@ -235,4 +254,9 @@ type node struct {
 	paramChild *node
 	// 责任链
 	handleChains []HandleFunc
+}
+
+type MatchNode struct {
+	node       *node
+	pathParams map[string][]string
 }

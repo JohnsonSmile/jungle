@@ -20,18 +20,20 @@ func TestServer(t *testing.T) {
 		ctx.Resp.Write([]byte("hello world"))
 	})
 
-	h.AddRoute(http.MethodGet, "user/*", func(ctx *Context) {
-		vals := ctx.Req.URL.Query()
-		name := vals.Get("name")
-		if name == "" {
-			ctx.Resp.Write([]byte("param error"))
-			return
-		}
-		ctx.Resp.Write([]byte(name))
-	})
+	// h.AddRoute(http.MethodGet, "user/*", func(ctx *Context) {
+	// 	vals := ctx.Req.URL.Query()
+	// 	name := vals.Get("name")
+	// 	if name == "" {
+	// 		ctx.Resp.Write([]byte("param error"))
+	// 		return
+	// 	}
+	// 	ctx.Resp.Write([]byte(name))
+	// })
 
-	h.AddRoute(http.MethodGet, "user/:id", func(ctx *Context) {
-		ctx.Resp.Write([]byte(ctx.Req.URL.Path))
+	h.AddRoute(http.MethodGet, "user/:id/:id/hello/:address", func(ctx *Context) {
+		ids := ctx.PathParams["id"]
+		addresses := ctx.PathParams["address"]
+		ctx.Resp.Write([]byte(addresses[0] + "-" + ids[0] + "-" + ids[1]))
 	})
 
 	err := h.Start()

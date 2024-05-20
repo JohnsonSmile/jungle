@@ -51,14 +51,15 @@ func (h *HTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // TODO:
 func (h *HTTPServer) serve(ctx *Context) {
-	node, ok := h.FindRoute(ctx.Req.Method, ctx.Req.URL.Path)
+	matchInfo, ok := h.FindRoute(ctx.Req.Method, ctx.Req.URL.Path)
 	if !ok {
 		// 路由没有找到
 		ctx.Resp.WriteHeader(http.StatusNotFound)
 		_, _ = ctx.Resp.Write([]byte("NOT FOUND"))
 		return
 	}
-	for _, handle := range node.handleChains {
+	for _, handle := range matchInfo.node.handleChains {
+		ctx.PathParams = matchInfo.pathParams
 		handle(ctx)
 	}
 }
