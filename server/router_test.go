@@ -22,7 +22,9 @@ func TestRouter_AddRoute(t *testing.T) {
 			path    string
 			handler HandleFunc
 		}
-		wantTree map[string]*node
+		wantTree    map[string]*node
+		shouldPanic bool
+		panicText   string
 	}{
 		{
 			name: "only get method",
@@ -287,12 +289,125 @@ func TestRouter_AddRoute(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "only get method with path param",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodGet,
+					path:    "/users",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/users/:id",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/users/:id/article",
+					handler: mockHandler,
+				},
+			},
+			wantTree: map[string]*node{
+				http.MethodGet: {
+					path: "/",
+					children: []*node{
+						{
+							path:     "users",
+							children: make([]*node, 0),
+							paramChild: &node{
+								path: ":id",
+								children: []*node{
+									{
+										path:     "article",
+										children: make([]*node, 0),
+										handleChains: []HandleFunc{
+											mockHandler,
+										},
+									},
+								},
+								handleChains: []HandleFunc{
+									mockHandler,
+								},
+							},
+							handleChains: []HandleFunc{
+								mockHandler,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "should panic when create param node but already has a star node",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodGet,
+					path:    "/users",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/users/*",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/users/:id",
+					handler: mockHandler,
+				},
+			},
+			shouldPanic: true,
+			panicText:   "already a star child exists",
+		},
+		{
+			name: "should panic when create star node but already has a param node",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodGet,
+					path:    "/users",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/users/:id",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodGet,
+					path:    "/users/*",
+					handler: mockHandler,
+				},
+			},
+			shouldPanic: true,
+			panicText:   "already a param child exists",
+		},
 	}
 
 	// mock 方案
 	for idx, tc := range testCases {
 		r := newRouter()
 		t.Log(tc.name)
+		if tc.shouldPanic {
+			require.Panicsf(t, func() {
+				for _, route := range tc.routes {
+					r.AddRoute(route.method, route.path, route.handler)
+				}
+			}, tc.panicText)
+			continue
+		}
 		for _, route := range tc.routes {
 			r.AddRoute(route.method, route.path, route.handler)
 		}
@@ -525,6 +640,111 @@ func TestRouter_FindRoute(t *testing.T) {
 			},
 			shouldFound: true,
 		},
+		{
+			name:   "find route that exists with route param",
+			method: http.MethodHead,
+			path:   "/user/2",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodHead,
+					path:    "/user",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/:id",
+					handler: mockHandler1,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/:id/article",
+					handler: mockHandler,
+				},
+			},
+			wantNode: &node{
+				path: ":id",
+				children: []*node{
+					{
+						path:     "article",
+						children: make([]*node, 0),
+						handleChains: []HandleFunc{
+							mockHandler,
+						},
+					},
+				},
+				handleChains: []HandleFunc{
+					mockHandler1,
+				},
+			},
+			shouldFound: true,
+		},
+		{
+			name:   "find route that exists with route param 1",
+			method: http.MethodHead,
+			path:   "/user/2/article",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodHead,
+					path:    "/user",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/:id",
+					handler: mockHandler1,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/:id/article",
+					handler: mockHandler,
+				},
+			},
+			wantNode: &node{
+				path:     "article",
+				children: make([]*node, 0),
+				handleChains: []HandleFunc{
+					mockHandler,
+				},
+			},
+			shouldFound: true,
+		},
+		{
+			name:   "find route that exists with route param 2",
+			method: http.MethodHead,
+			path:   "/user/2",
+			routes: []struct {
+				method  string
+				path    string
+				handler HandleFunc
+			}{
+				{
+					method:  http.MethodHead,
+					path:    "/user",
+					handler: mockHandler,
+				},
+				{
+					method:  http.MethodHead,
+					path:    "/user/:id",
+					handler: mockHandler1,
+				},
+			},
+			wantNode: &node{
+				path:     ":id",
+				children: make([]*node, 0),
+				handleChains: []HandleFunc{
+					mockHandler1,
+				},
+			},
+			shouldFound: true,
+		},
 	}
 
 	// mock 方案
@@ -574,6 +794,14 @@ func nodeEqual(src *node, dst *node) error {
 
 	if len(src.handleChains) != len(dst.handleChains) {
 		return fmt.Errorf("src handleChains length: [%+v] not equal to dst handleChains length: [%+v]", src, dst)
+	}
+
+	if err := nodeEqual(src.paramChild, dst.paramChild); err != nil {
+		return err
+	}
+
+	if err := nodeEqual(src.starChild, dst.starChild); err != nil {
+		return err
 	}
 
 	for i := 0; i < len(src.children); i++ {

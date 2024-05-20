@@ -52,6 +52,10 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 		}
 		// 如果是 *
 		if seg == "*" {
+			// 不允许同时存在 * 和 :
+			if cur.paramChild != nil {
+				panic("already a param child exists")
+			}
 			next := &node{
 				path:     seg,
 				children: make([]*node, 0),
@@ -63,6 +67,25 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 				cur.starChild.handleChains = handles
 			}
 			cur = cur.starChild
+			continue
+		} else if strings.HasPrefix(seg, ":") {
+
+			// 不允许同时存在 * 和 :
+			if cur.starChild != nil {
+				panic("already a star child exists")
+			}
+			next := &node{
+				// path:     strings.Trim(seg, ":"),
+				path:     seg,
+				children: make([]*node, 0),
+			}
+			if cur.paramChild == nil {
+				cur.paramChild = next
+			}
+			if total == idx+1 {
+				cur.paramChild.handleChains = handles
+			}
+			cur = cur.paramChild
 			continue
 		}
 
@@ -159,18 +182,30 @@ func (r *router) FindRoute(method string, path string) (n *node, found bool) {
 
 		// TODO: 二分查找...因为是排序了的...
 		// 查找所有的children
-		shouldMatchStar := true
+		shouldMatchOther := true
 		for _, child := range node.children {
 			if child.path == seg {
 				if len(child.handleChains) > 0 &&
 					idx+1 == total {
 					return child, true
 				}
-				shouldMatchStar = false
+				shouldMatchOther = false
 				node = child
 			}
 		}
-		if node.starChild != nil && shouldMatchStar {
+
+		// 路径参数匹配优先级 > *匹配
+		if node.paramChild != nil && shouldMatchOther {
+			if len(node.paramChild.handleChains) > 0 &&
+				idx+1 == total {
+				return node.paramChild, true
+			}
+			node = node.paramChild
+			continue
+		}
+
+		// *匹配
+		if node.starChild != nil && shouldMatchOther {
 			if len(node.starChild.handleChains) > 0 &&
 				idx+1 == total {
 				return node.starChild, true
@@ -196,6 +231,8 @@ type node struct {
 	children []*node
 	// 通配符
 	starChild *node
+	// 路径参数
+	paramChild *node
 	// 责任链
 	handleChains []HandleFunc
 }

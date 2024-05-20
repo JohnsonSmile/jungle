@@ -30,6 +30,10 @@ func TestServer(t *testing.T) {
 		ctx.Resp.Write([]byte(name))
 	})
 
+	h.AddRoute(http.MethodGet, "user/:id", func(ctx *Context) {
+		ctx.Resp.Write([]byte(ctx.Req.URL.Path))
+	})
+
 	err := h.Start()
 	require.NoError(t, err)
 
