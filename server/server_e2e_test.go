@@ -30,6 +30,24 @@ func TestServer(t *testing.T) {
 	// 	ctx.Resp.Write([]byte(name))
 	// })
 
+	h.AddRoute(http.MethodPut, "user/:id", func(ctx *Context) {
+
+		result := ctx.HeaderValue("x-name")
+
+		var decodedMap map[string]any
+		err := ctx.BindJSON(&decodedMap)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, map[string]any{
+				"msg": "body is empty",
+				"err": err.Error(),
+			})
+			return
+		}
+		ctx.JSON(http.StatusOK, map[string]any{
+			"decodedMap": decodedMap,
+			"name":       result.val,
+		})
+	})
 	h.AddRoute(http.MethodGet, "user/:id/:id/hello/:address", func(ctx *Context) {
 		ids := ctx.PathParams["id"]
 		addresses := ctx.PathParams["address"]

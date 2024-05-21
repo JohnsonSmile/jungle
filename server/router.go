@@ -3,6 +3,7 @@ package server
 import (
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -166,7 +167,7 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 		return nil, false
 	}
 
-	var pathParams = make(map[string][]string)
+	var pathParams = make(url.Values)
 	// 根路径
 	if node.path == path {
 		if len(node.handleChains) > 0 {
@@ -205,10 +206,10 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 		// 路径参数匹配优先级 > *匹配
 		if node.paramChild != nil && shouldMatchOther {
 			// 记录pathParams,传递给最终的叶子节点.
-			if _, ok := pathParams[node.paramChild.path]; !ok {
+			if !pathParams.Has(node.paramChild.path) {
 				pathParams[node.paramChild.path] = make([]string, 0)
 			}
-			pathParams[node.paramChild.path] = append(pathParams[node.paramChild.path], seg)
+			pathParams.Add(node.paramChild.path, seg)
 			if len(node.paramChild.handleChains) > 0 &&
 				idx+1 == total {
 				return &MatchNode{
@@ -233,7 +234,9 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 			continue
 		}
 	}
-	return nil, false
+	return &MatchNode{
+		node: nil,
+	}, false
 }
 
 // 定义api接口.
@@ -258,5 +261,5 @@ type node struct {
 
 type MatchNode struct {
 	node       *node
-	pathParams map[string][]string
+	pathParams url.Values
 }
