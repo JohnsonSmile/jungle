@@ -244,10 +244,10 @@ func (result *Result) TimeFromUnixMicro() (val time.Time, err error) {
 }
 
 // response
-func (ctx *Context) JSON(status int, val any) error {
+func (ctx *Context) JSON(status int, val any) {
 	data, err := json.Marshal(val)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	// status
@@ -265,12 +265,11 @@ func (ctx *Context) JSON(status int, val any) error {
 	// body
 	writenLength, err := ctx.Resp.Write(data)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	if writenLength != contentLength {
-		return errors.New("data not write complete..")
+		panic("data not write complete..")
 	}
-	return err
 }
 
 func (ctx *Context) Next() {
@@ -291,11 +290,11 @@ func (ctx *Context) Abort(status int) error {
 	return nil
 }
 
-func (ctx *Context) AbortJSON(status int, val any) error {
+func (ctx *Context) AbortJSON(status int, val any) {
 
 	// 避免++溢出的时候成负数了
 	ctx.Index = math.MaxInt - 10
-	return ctx.JSON(status, val)
+	ctx.JSON(status, val)
 }
 
 // cookie

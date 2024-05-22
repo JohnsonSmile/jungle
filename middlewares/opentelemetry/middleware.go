@@ -34,7 +34,18 @@ func (m *Middleware) Build() func(ctx *server.Context) {
 		reqCtx = otel.GetTextMapPropagator().Extract(reqCtx, propagation.HeaderCarrier(ctx.Req.Header))
 		// 先设置spanName为 unknown, 在执行完逻辑之后, 在ctx中会有 MatchedPath, 再修改name
 		spanCtx, span := m.tracer.Start(reqCtx, "unknown")
-		defer span.End()
+		defer func() {
+			span.SetName(ctx.MatchedPath)
+			status, exists := ctx.Get("status")
+			if statusCode, ok := status.(int); exists && ok {
+				span.SetAttributes(attribute.Int("http.status", statusCode))
+			}
+			data, exists := ctx.Get("data")
+			if dataStr, ok := data.(string); exists && ok {
+				span.SetAttributes(attribute.String("resp.data", dataStr))
+			}
+			span.End()
+		}()
 
 		span.SetAttributes(attribute.String("http.method", ctx.Req.Method))
 		span.SetAttributes(attribute.String("http.url", ctx.Req.URL.String()))
@@ -43,14 +54,5 @@ func (m *Middleware) Build() func(ctx *server.Context) {
 		// 传递context信息给下游
 		ctx.Req = ctx.Req.WithContext(spanCtx)
 		ctx.Next()
-		span.SetName(ctx.MatchedPath)
-		status, exists := ctx.Get("status")
-		if statusCode, ok := status.(int); exists && ok {
-			span.SetAttributes(attribute.Int("http.status", statusCode))
-		}
-		data, exists := ctx.Get("data")
-		if dataStr, ok := data.(string); exists && ok {
-			span.SetAttributes(attribute.String("resp.data", dataStr))
-		}
 	}
 }

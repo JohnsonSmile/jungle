@@ -24,7 +24,7 @@ func TestMiddleware_AccessLog(t *testing.T) {
 }
 
 func GetUser(ctx *server.Context) {
-	_ = ctx.JSON(http.StatusOK, map[string]any{
+	ctx.JSON(http.StatusOK, map[string]any{
 		"name": "zhangsan",
 	})
 }
