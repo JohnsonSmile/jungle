@@ -9,6 +9,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,20 @@ type Context struct {
 	HeaderParams url.Values
 	HandlerChain []HandleFunc
 	Index        int // 当前执行 handler chain 的下标.
+	mux          sync.RWMutex
+	values       map[string]any // 存储值
+}
+
+func NewContext(req *http.Request, resp http.ResponseWriter) *Context {
+	return &Context{
+		Req:          req,
+		Resp:         resp,
+		values:       make(map[string]any),
+		HandlerChain: make([]HandleFunc, 0),
+		PathParams:   make(url.Values),
+		QueryParams:  make(url.Values),
+		HeaderParams: make(url.Values),
+	}
 }
 
 // req
@@ -238,6 +253,10 @@ func (ctx *Context) JSON(status int, val any) error {
 	// status
 	ctx.Resp.WriteHeader(status)
 
+	// 用来做trace的时候用的
+	ctx.Set("status", status)
+	ctx.Set("data", string(data))
+
 	// header
 	contentLength := len(data)
 	ctx.Resp.Header().Set("Content-Type", "application/json")
@@ -263,12 +282,17 @@ func (ctx *Context) Next() {
 }
 
 func (ctx *Context) Abort(status int) error {
-	ctx.Index = math.MaxInt
+	ctx.Index = math.MaxInt - 10
 	ctx.Resp.WriteHeader(status)
+
+	// 用来做trace的时候用的
+	ctx.Set("status", status)
+
 	return nil
 }
 
 func (ctx *Context) AbortJSON(status int, val any) error {
+
 	// 避免++溢出的时候成负数了
 	ctx.Index = math.MaxInt - 10
 	return ctx.JSON(status, val)
@@ -278,4 +302,19 @@ func (ctx *Context) AbortJSON(status int, val any) error {
 
 func (ctx *Context) SetCookie(ck *http.Cookie) {
 	http.SetCookie(ctx.Resp, ck)
+}
+
+// values
+
+func (c *Context) Get(key string) (val any, exists bool) {
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+	val, exists = c.values[key]
+	return
+}
+
+func (c *Context) Set(key string, val any) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.values[key] = val
 }

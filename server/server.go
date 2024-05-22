@@ -48,23 +48,20 @@ func New(addr string) *HTTPServer {
 }
 
 // AddRoute 添加路由
-func (serv *HTTPServer) AddRoute(method string, path string, handler HandleFunc, middlewares ...HandleFunc) {
-	serv.router.AddRoute(method, path, serv.middlewares, handler, middlewares...)
+func (s *HTTPServer) AddRoute(method string, path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.router.AddRoute(method, path, s.middlewares, handler, middlewares...)
 }
 
 // ServeHTTP implements Server.
-func (serv *HTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := &Context{
-		Req:  r,
-		Resp: w,
-	}
+func (s *HTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := NewContext(r, w)
 	// 查找路由,并实现命中的路由
-	serv.serve(ctx)
+	s.serve(ctx)
 }
 
 // TODO:
-func (h *HTTPServer) serve(ctx *Context) {
-	matchInfo, ok := h.router.FindRoute(ctx.Req.Method, ctx.Req.URL.Path)
+func (s *HTTPServer) serve(ctx *Context) {
+	matchInfo, ok := s.router.FindRoute(ctx.Req.Method, ctx.Req.URL.Path)
 	if !ok {
 		// 路由没有找到
 		ctx.Resp.WriteHeader(http.StatusNotFound)
@@ -83,52 +80,51 @@ func (h *HTTPServer) serve(ctx *Context) {
 }
 
 // Start implements Server.
-func (h *HTTPServer) Start() error {
+func (s *HTTPServer) Start() error {
 
-	l, err := net.Listen("tcp", h.addr)
+	l, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return err
 	}
 	startCh := make(chan struct{}, 1)
 	go func() {
-		h.srv = &http.Server{
-			Addr:    h.addr,
-			Handler: h,
+		s.srv = &http.Server{
+			Addr:    s.addr,
+			Handler: s,
 		}
 		startCh <- struct{}{}
-		if err = h.srv.Serve(l); err != nil {
+		if err = s.srv.Serve(l); err != nil {
 			log.Fatal(err)
 		}
 	}()
 	<-startCh
-	log.Printf("server already started at address: [%s]\n", h.addr)
+	log.Printf("server already started at address: [%s]\n", s.addr)
 	return nil
 }
 
 // ShutDown implements Server.
-func (h *HTTPServer) ShutDown() error {
+func (s *HTTPServer) ShutDown() error {
 	// 优雅退出
 	// kill -9 是捕捉不到的
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	ctx, cancel := context.WithTimeout(context.Background(), h.shutDownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.shutDownTimeout)
 	defer cancel()
 	for {
 		select {
 		case <-ctx.Done():
 			break
 		default:
-			return h.srv.Shutdown(ctx)
+			return s.srv.Shutdown(ctx)
 		}
 	}
-
 }
 
 // Use implements Server.
-func (serv *HTTPServer) Use(middlewares ...HandleFunc) {
-	serv.middlewares = append(serv.middlewares, middlewares...)
+func (s *HTTPServer) Use(middlewares ...HandleFunc) {
+	s.middlewares = append(s.middlewares, middlewares...)
 }
 
 var _ Server = (*HTTPServer)(nil)

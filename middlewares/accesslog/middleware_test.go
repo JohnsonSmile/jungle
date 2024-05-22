@@ -8,14 +8,14 @@ import (
 	"testing"
 )
 
-// go test -v middlewares/accesslog/*.go -run TestMiddleware
-func TestMiddleware(t *testing.T) {
+// go test -v middlewares/accesslog/*.go -run TestMiddleware_AccessLog
+func TestMiddleware_AccessLog(t *testing.T) {
 
 	var srv server.Server = server.New(":8081")
-	accesslogMiddleware := AccessLog(func(str string) {
+	accesslogBuilder := New(func(str string) {
 		fmt.Println(str)
 	})
-	srv.Use(accesslogMiddleware)
+	srv.Use(accesslogBuilder.Build())
 	srv.AddRoute(http.MethodPost, "/a/b/:id", GetUser)
 	resp := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "http://localhost:8081/a/b/1", nil)

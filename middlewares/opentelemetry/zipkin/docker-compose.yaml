@@ -1,0 +1,10 @@
+version: "3.7"
+services:
+  zipkin-demo:
+    image: openzipkin/zipkin:latest
+    ports:
+      - "9411:9411"
+    networks:
+      - zipkin-demo
+networks:
+  zipkin-demo:
