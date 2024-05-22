@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -17,6 +18,8 @@ type Context struct {
 	PathParams   url.Values
 	QueryParams  url.Values
 	HeaderParams url.Values
+	HandlerChain []HandleFunc
+	Index        int // 当前执行 handler chain 的下标.
 }
 
 // req
@@ -249,6 +252,28 @@ func (ctx *Context) JSON(status int, val any) error {
 	}
 	return err
 }
+
+func (ctx *Context) Next() {
+	ctx.Index++
+	for ctx.Index < len(ctx.HandlerChain) {
+		ctx.HandlerChain[ctx.Index](ctx)
+		ctx.Index++
+	}
+}
+
+func (ctx *Context) Abort(status int) error {
+	ctx.Index = math.MaxInt
+	ctx.Resp.WriteHeader(status)
+	return nil
+}
+
+func (ctx *Context) AbortJSON(status int, val any) error {
+	// 避免++溢出的时候成负数了
+	ctx.Index = math.MaxInt - 10
+	return ctx.JSON(status, val)
+}
+
+// cookie
 
 func (ctx *Context) SetCookie(ck *http.Cookie) {
 	http.SetCookie(ctx.Resp, ck)

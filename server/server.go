@@ -18,17 +18,24 @@ type Server interface {
 	Start() error
 	ShutDown() error
 	// AddRoute 添加路由
-	// method 方法
-	// path 路由
-	// handleFunc 路由业务回调
-	AddRoute(method string, path string, handles ...HandleFunc)
+	//
+	// - method 方法
+	// - path 路由
+	// - handlers 路由业务回调
+	AddRoute(method string, path string, handler HandleFunc, middlewares ...HandleFunc)
+
+	// Use 添加中间件
+	//
+	// handlers 中间件
+	Use(middlewares ...HandleFunc)
 }
 
 type HTTPServer struct {
 	srv             *http.Server
 	addr            string
 	shutDownTimeout time.Duration
-	*router
+	router          *router
+	middlewares     []HandleFunc
 }
 
 func New(addr string) *HTTPServer {
@@ -36,31 +43,41 @@ func New(addr string) *HTTPServer {
 		addr:            addr,
 		shutDownTimeout: time.Second * 15,
 		router:          newRouter(),
+		middlewares:     make([]HandleFunc, 0),
 	}
 }
 
+// AddRoute 添加路由
+func (serv *HTTPServer) AddRoute(method string, path string, handler HandleFunc, middlewares ...HandleFunc) {
+	serv.router.AddRoute(method, path, serv.middlewares, handler, middlewares...)
+}
+
 // ServeHTTP implements Server.
-func (h *HTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (serv *HTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := &Context{
 		Req:  r,
 		Resp: w,
 	}
 	// 查找路由,并实现命中的路由
-	h.serve(ctx)
+	serv.serve(ctx)
 }
 
 // TODO:
 func (h *HTTPServer) serve(ctx *Context) {
-	matchInfo, ok := h.FindRoute(ctx.Req.Method, ctx.Req.URL.Path)
+	matchInfo, ok := h.router.FindRoute(ctx.Req.Method, ctx.Req.URL.Path)
 	if !ok {
 		// 路由没有找到
 		ctx.Resp.WriteHeader(http.StatusNotFound)
 		_, _ = ctx.Resp.Write([]byte("NOT FOUND"))
 		return
 	}
-	for _, handle := range matchInfo.node.handleChains {
-		ctx.PathParams = matchInfo.pathParams
-		handle(ctx)
+	ctx.HandlerChain = matchInfo.node.handlerChains
+	ctx.PathParams = matchInfo.pathParams
+
+	// 执行 handler chain
+	for ctx.Index < len(ctx.HandlerChain) {
+		ctx.HandlerChain[ctx.Index](ctx)
+		ctx.Index++
 	}
 }
 
@@ -106,6 +123,11 @@ func (h *HTTPServer) ShutDown() error {
 		}
 	}
 
+}
+
+// Use implements Server.
+func (serv *HTTPServer) Use(middlewares ...HandleFunc) {
+	serv.middlewares = append(serv.middlewares, middlewares...)
 }
 
 var _ Server = (*HTTPServer)(nil)

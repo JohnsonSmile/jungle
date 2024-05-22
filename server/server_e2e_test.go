@@ -3,8 +3,10 @@
 package server
 
 import (
+	"log"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -18,6 +20,26 @@ func TestServer(t *testing.T) {
 
 	h.AddRoute(http.MethodGet, "/user", func(ctx *Context) {
 		ctx.Resp.Write([]byte("hello world"))
+	})
+
+	h.Use(func(ctx *Context) {
+		now := time.Now()
+		log.Println("start exec...")
+		defer func(ctx *Context) {
+			elapsed := time.Since(now)
+			log.Printf("exec elapesd: %+v\n", elapsed)
+		}(ctx)
+		ctx.Next()
+	}, func(ctx *Context) {
+		log.Println("===========1")
+		ctx.Next()
+		log.Println("===========11")
+	}, func(ctx *Context) {
+		log.Println("===========2")
+		ctx.AbortJSON(http.StatusBadRequest, map[string]any{
+			"name": "unknown",
+		})
+		log.Println("===========22")
 	})
 
 	// h.AddRoute(http.MethodGet, "user/*", func(ctx *Context) {

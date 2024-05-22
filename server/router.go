@@ -29,7 +29,11 @@ func newRouter() *router {
 	}
 }
 
-func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
+func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFunc, handler HandleFunc, middlewares ...HandleFunc) {
+
+	// middle 和 handlers 组合
+	handlerchain := append(servMiddlewares, middlewares...)
+	handlerchain = append(handlerchain, handler)
 	// validate the method must be one of the http.Method
 	if !r.supportedMethod[method] {
 		log.Fatalf("method: %s not supported", method)
@@ -65,7 +69,7 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 				cur.starChild = next
 			}
 			if total == idx+1 {
-				cur.starChild.handleChains = handles
+				cur.starChild.handlerChains = handlerchain
 			}
 			cur = cur.starChild
 			continue
@@ -84,7 +88,7 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 				cur.paramChild = next
 			}
 			if total == idx+1 {
-				cur.paramChild.handleChains = handles
+				cur.paramChild.handlerChains = handlerchain
 			}
 			cur = cur.paramChild
 			continue
@@ -110,7 +114,7 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 			cur = cur.children[continueIndex]
 			// 这个地方可能会忽略掉,导致出问题.
 			if total == idx+1 {
-				cur.handleChains = handles
+				cur.handlerChains = handlerchain
 			}
 			continue
 		}
@@ -126,7 +130,7 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 
 			// 是叶子节点,绑定调用链
 			if total == idx+1 {
-				next.handleChains = handles
+				next.handlerChains = handlerchain
 			}
 			if insertIndex != 0 {
 				insertIndex = insertIndex - 1
@@ -152,7 +156,7 @@ func (r *router) AddRoute(method string, path string, handles ...HandleFunc) {
 
 		// 是叶子节点,绑定调用链
 		if total == idx+1 {
-			next.handleChains = handles
+			next.handlerChains = handlerchain
 		}
 		cur.children = append(cur.children, next)
 		cur = next
@@ -170,7 +174,7 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 	var pathParams = make(url.Values)
 	// 根路径
 	if node.path == path {
-		if len(node.handleChains) > 0 {
+		if len(node.handlerChains) > 0 {
 			return &MatchNode{
 				node:       node,
 				pathParams: pathParams,
@@ -191,7 +195,7 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 		shouldMatchOther := true
 		for _, child := range node.children {
 			if child.path == seg {
-				if len(child.handleChains) > 0 &&
+				if len(child.handlerChains) > 0 &&
 					idx+1 == total {
 					return &MatchNode{
 						node:       child,
@@ -210,7 +214,7 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 				pathParams[node.paramChild.path] = make([]string, 0)
 			}
 			pathParams.Add(node.paramChild.path, seg)
-			if len(node.paramChild.handleChains) > 0 &&
+			if len(node.paramChild.handlerChains) > 0 &&
 				idx+1 == total {
 				return &MatchNode{
 					node:       node.paramChild,
@@ -223,7 +227,7 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 
 		// *匹配
 		if node.starChild != nil && shouldMatchOther {
-			if len(node.starChild.handleChains) > 0 &&
+			if len(node.starChild.handlerChains) > 0 &&
 				idx+1 == total {
 				return &MatchNode{
 					node:       node.starChild,
@@ -256,7 +260,7 @@ type node struct {
 	// 路径参数
 	paramChild *node
 	// 责任链
-	handleChains []HandleFunc
+	handlerChains []HandleFunc
 }
 
 type MatchNode struct {
