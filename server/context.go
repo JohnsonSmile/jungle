@@ -249,3 +249,7 @@ func (ctx *Context) JSON(status int, val any) error {
 	}
 	return err
 }
+
+func (ctx *Context) SetCookie(ck *http.Cookie) {
+	http.SetCookie(ctx.Resp, ck)
+}
