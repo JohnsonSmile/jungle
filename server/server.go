@@ -73,7 +73,8 @@ func (h *HTTPServer) serve(ctx *Context) {
 	}
 	ctx.HandlerChain = matchInfo.node.handlerChains
 	ctx.PathParams = matchInfo.pathParams
-
+	ctx.MatchedPath = matchInfo.node.matchedPath
+	// ctx.FuncName = matchInfo.FuncName
 	// 执行 handler chain
 	for ctx.Index < len(ctx.HandlerChain) {
 		ctx.HandlerChain[ctx.Index](ctx)

@@ -69,6 +69,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 				cur.starChild = next
 			}
 			if total == idx+1 {
+				cur.starChild.matchedPath = path
 				cur.starChild.handlerChains = handlerchain
 			}
 			cur = cur.starChild
@@ -88,6 +89,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 				cur.paramChild = next
 			}
 			if total == idx+1 {
+				cur.paramChild.matchedPath = path
 				cur.paramChild.handlerChains = handlerchain
 			}
 			cur = cur.paramChild
@@ -114,6 +116,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 			cur = cur.children[continueIndex]
 			// 这个地方可能会忽略掉,导致出问题.
 			if total == idx+1 {
+				cur.matchedPath = path
 				cur.handlerChains = handlerchain
 			}
 			continue
@@ -130,6 +133,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 
 			// 是叶子节点,绑定调用链
 			if total == idx+1 {
+				next.matchedPath = path
 				next.handlerChains = handlerchain
 			}
 			if insertIndex != 0 {
@@ -156,6 +160,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 
 		// 是叶子节点,绑定调用链
 		if total == idx+1 {
+			next.matchedPath = path
 			next.handlerChains = handlerchain
 		}
 		cur.children = append(cur.children, next)
@@ -253,8 +258,9 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 // 通配符 /user/* 和 /user/id 的 优先级
 // 一般设计成 /user/id > /user/* /user/* 作为兜底
 type node struct {
-	path     string
-	children []*node
+	path        string
+	matchedPath string
+	children    []*node
 	// 通配符
 	starChild *node
 	// 路径参数

@@ -15,6 +15,7 @@ import (
 type Context struct {
 	Resp         http.ResponseWriter
 	Req          *http.Request
+	MatchedPath  string
 	PathParams   url.Values
 	QueryParams  url.Values
 	HeaderParams url.Values

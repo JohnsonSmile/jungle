@@ -58,6 +58,7 @@ func TestRouter_AddRoute(t *testing.T) {
 							handlerChains: []HandleFunc{
 								mockHandler,
 							},
+							matchedPath: "/home",
 						},
 						{
 							path: "user",
@@ -68,6 +69,7 @@ func TestRouter_AddRoute(t *testing.T) {
 									handlerChains: []HandleFunc{
 										mockHandler,
 									},
+									matchedPath: "/user/home",
 								},
 							},
 						},
@@ -126,11 +128,13 @@ func TestRouter_AddRoute(t *testing.T) {
 									handlerChains: []HandleFunc{
 										mockHandler,
 									},
+									matchedPath: "/users/id",
 								},
 							},
 							handlerChains: []HandleFunc{
 								mockHandler,
 							},
+							matchedPath: "/users",
 						},
 					},
 				},
@@ -146,6 +150,7 @@ func TestRouter_AddRoute(t *testing.T) {
 									handlerChains: []HandleFunc{
 										mockHandler,
 									},
+									matchedPath: "/users/id",
 								},
 							},
 						},
@@ -163,6 +168,7 @@ func TestRouter_AddRoute(t *testing.T) {
 									handlerChains: []HandleFunc{
 										mockHandler,
 									},
+									matchedPath: "/users/id",
 								},
 							},
 						},
@@ -180,6 +186,7 @@ func TestRouter_AddRoute(t *testing.T) {
 									handlerChains: []HandleFunc{
 										mockHandler,
 									},
+									matchedPath: "/users/id",
 								},
 							},
 						},
@@ -230,16 +237,19 @@ func TestRouter_AddRoute(t *testing.T) {
 											handlerChains: []HandleFunc{
 												mockHandler1,
 											},
+											matchedPath: "/user/home/id",
 										},
 									},
 									handlerChains: []HandleFunc{
 										mockHandler,
 									},
+									matchedPath: "/user/home",
 								},
 							},
 							handlerChains: []HandleFunc{
 								mockHandler1,
 							},
+							matchedPath: "/user",
 						},
 					},
 				},
@@ -285,6 +295,7 @@ func TestRouter_AddRoute(t *testing.T) {
 									handlerChains: []HandleFunc{
 										mockHandler,
 									},
+									matchedPath: "/user/home",
 								},
 							},
 							starChild: &node{
@@ -296,11 +307,13 @@ func TestRouter_AddRoute(t *testing.T) {
 										handlerChains: []HandleFunc{
 											mockHandler,
 										},
+										matchedPath: "/user/*/id",
 									},
 								},
 								handlerChains: []HandleFunc{
 									mockHandler,
 								},
+								matchedPath: "/user/*",
 							},
 						},
 					},
@@ -350,15 +363,18 @@ func TestRouter_AddRoute(t *testing.T) {
 										handlerChains: []HandleFunc{
 											mockHandler,
 										},
+										matchedPath: "/users/:id/article",
 									},
 								},
 								handlerChains: []HandleFunc{
 									mockHandler,
 								},
+								matchedPath: "/users/:id",
 							},
 							handlerChains: []HandleFunc{
 								mockHandler,
 							},
+							matchedPath: "/users",
 						},
 					},
 				},
@@ -497,11 +513,13 @@ func TestRouter_FindRoute(t *testing.T) {
 						handlerChains: []HandleFunc{
 							mockHandler1,
 						},
+						matchedPath: "/user/id",
 					},
 				},
 				handlerChains: []HandleFunc{
 					mockHandler,
 				},
+				matchedPath: "/user",
 			},
 			shouldFound: true,
 		},
@@ -534,6 +552,7 @@ func TestRouter_FindRoute(t *testing.T) {
 				handlerChains: []HandleFunc{
 					mockHandler1,
 				},
+				matchedPath: "/user/id",
 			},
 			shouldFound: true,
 		},
@@ -584,6 +603,7 @@ func TestRouter_FindRoute(t *testing.T) {
 				handlerChains: []HandleFunc{
 					mockHandler1,
 				},
+				matchedPath: "/user/home/id",
 			},
 			shouldFound: true,
 		},
@@ -642,6 +662,7 @@ func TestRouter_FindRoute(t *testing.T) {
 				handlerChains: []HandleFunc{
 					mockHandler1,
 				},
+				matchedPath: "/user/*",
 			},
 			shouldFound: true,
 		},
@@ -683,11 +704,13 @@ func TestRouter_FindRoute(t *testing.T) {
 						handlerChains: []HandleFunc{
 							mockHandler,
 						},
+						matchedPath: "/user/*/id",
 					},
 				},
 				handlerChains: []HandleFunc{
 					mockHandler1,
 				},
+				matchedPath: "/user/*",
 			},
 			shouldFound: true,
 		},
@@ -726,11 +749,13 @@ func TestRouter_FindRoute(t *testing.T) {
 						handlerChains: []HandleFunc{
 							mockHandler,
 						},
+						matchedPath: "/user/:id/article",
 					},
 				},
 				handlerChains: []HandleFunc{
 					mockHandler1,
 				},
+				matchedPath: "/user/:id",
 			},
 			shouldFound: true,
 		},
@@ -769,6 +794,7 @@ func TestRouter_FindRoute(t *testing.T) {
 				handlerChains: []HandleFunc{
 					mockHandler,
 				},
+				matchedPath: "/user/:id/article",
 			},
 			shouldFound: true,
 		},
@@ -801,6 +827,7 @@ func TestRouter_FindRoute(t *testing.T) {
 				handlerChains: []HandleFunc{
 					mockHandler1,
 				},
+				matchedPath: "/user/:id",
 			},
 			shouldFound: true,
 		},
@@ -816,7 +843,7 @@ func TestRouter_FindRoute(t *testing.T) {
 		matchInfo, found := r.FindRoute(tc.method, tc.path)
 		// 断言
 		t.Log("tc.wantNode", tc.wantNode)
-		t.Log("matchInfo", matchInfo)
+		t.Log("matchInfo", matchInfo.node)
 		require.NoError(t, nodeEqual(tc.wantNode, matchInfo.node))
 		require.True(t, found == tc.shouldFound)
 	}
@@ -855,6 +882,9 @@ func nodeEqual(src *node, dst *node) error {
 
 	if len(src.handlerChains) != len(dst.handlerChains) {
 		return fmt.Errorf("src handleChains length: [%+v] not equal to dst handleChains length: [%+v]", src, dst)
+	}
+	if src.matchedPath != dst.matchedPath {
+		return fmt.Errorf("src matchedPath: [%s] not equal to dst matchedPath: [%s]", src.matchedPath, dst.matchedPath)
 	}
 
 	if err := nodeEqual(src.paramChild, dst.paramChild); err != nil {
