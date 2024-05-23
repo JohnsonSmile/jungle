@@ -171,17 +171,18 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 // 这种路径参数只支持,同名,且唯一一个
 func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool) {
 
-	node, ok := r.tree[method]
+	curNode, ok := r.tree[method]
 	if !ok {
 		return nil, false
 	}
 
 	var pathParams = make(url.Values)
+	var starNode *node
 	// 根路径
-	if node.path == path {
-		if len(node.handlerChains) > 0 {
+	if curNode.path == path {
+		if len(curNode.handlerChains) > 0 {
 			return &MatchNode{
-				node:       node,
+				node:       curNode,
 				pathParams: pathParams,
 			}, true
 		}
@@ -198,7 +199,7 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 		// TODO: 二分查找...因为是排序了的...
 		// 查找所有的children
 		shouldMatchOther := true
-		for _, child := range node.children {
+		for _, child := range curNode.children {
 			if child.path == seg {
 				if len(child.handlerChains) > 0 &&
 					idx+1 == total {
@@ -208,43 +209,55 @@ func (r *router) FindRoute(method string, path string) (n *MatchNode, found bool
 					}, true
 				}
 				shouldMatchOther = false
-				node = child
+				curNode = child
 			}
 		}
 
 		// 路径参数匹配优先级 > *匹配
-		if node.paramChild != nil && shouldMatchOther {
+		if curNode.paramChild != nil && shouldMatchOther {
 			// 记录pathParams,传递给最终的叶子节点.
-			if !pathParams.Has(node.paramChild.path) {
-				pathParams[node.paramChild.path] = make([]string, 0)
+			if !pathParams.Has(curNode.paramChild.path) {
+				pathParams[curNode.paramChild.path] = make([]string, 0)
 			}
-			pathParams.Add(node.paramChild.path, seg)
-			if len(node.paramChild.handlerChains) > 0 &&
+			pathParams.Add(curNode.paramChild.path, seg)
+			if len(curNode.paramChild.handlerChains) > 0 &&
 				idx+1 == total {
 				return &MatchNode{
-					node:       node.paramChild,
+					node:       curNode.paramChild,
 					pathParams: pathParams,
 				}, true
 			}
-			node = node.paramChild
+			curNode = curNode.paramChild
 			continue
 		}
 
 		// *匹配
-		if node.starChild != nil && shouldMatchOther {
-			if len(node.starChild.handlerChains) > 0 &&
+		if curNode.starChild != nil && shouldMatchOther {
+			if len(curNode.starChild.handlerChains) > 0 &&
 				idx+1 == total {
 				return &MatchNode{
-					node:       node.starChild,
+					node:       curNode.starChild,
 					pathParams: pathParams,
 				}, true
 			}
-			node = node.starChild
+			curNode = curNode.starChild
+
+			// 用来最终溯回,兜底
+			starNode = curNode
 			continue
 		}
 	}
+
+	// 最终溯回,兜底
+	if starNode != nil {
+		return &MatchNode{
+			node:       starNode,
+			pathParams: pathParams,
+		}, true
+	}
 	return &MatchNode{
-		node: nil,
+		node:       nil,
+		pathParams: pathParams,
 	}, false
 }
 

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -31,6 +33,7 @@ type HTTPServer struct {
 	router          *router
 	middlewares     []HandleFunc
 	tplEngine       TemplateEngine
+	staticHandler   *StaticFileHandler
 }
 
 func New(addr string, opts ...Option) *HTTPServer {
@@ -43,6 +46,10 @@ func New(addr string, opts ...Option) *HTTPServer {
 
 	for _, opt := range opts {
 		opt(serv)
+	}
+
+	if serv.staticHandler == nil {
+		serv.staticHandler = NewStaticFileHandler(100*1024*1024, time.Minute)
 	}
 
 	return serv
@@ -164,6 +171,16 @@ func (s *HTTPServer) Options(path string, handler HandleFunc, middlewares ...Han
 
 func (s *HTTPServer) Trace(path string, handler HandleFunc, middlewares ...HandleFunc) {
 	s.AddRoute(http.MethodTrace, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) ServeStaticDir(relativePath string, dir string) {
+	s.Get(path.Join(relativePath, "*"), func(ctx *Context) {
+		// 找到file
+		file := path.Clean(strings.TrimLeft(ctx.Req.URL.Path, relativePath))
+		handleFunc := s.staticHandler.Handle(dir)
+		ctx.PathParams.Set("file", file)
+		handleFunc(ctx)
+	})
 }
 
 var _ Server = (*HTTPServer)(nil)

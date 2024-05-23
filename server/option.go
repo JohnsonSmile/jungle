@@ -7,3 +7,9 @@ func WithTplEngine(eg TemplateEngine) Option {
 		s.tplEngine = eg
 	}
 }
+
+func WithStaticFileHandler(handler *StaticFileHandler) Option {
+	return func(s *HTTPServer) {
+		s.staticHandler = handler
+	}
+}

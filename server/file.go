@@ -2,13 +2,17 @@ package server
 
 import (
 	"errors"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"io"
 	"io/fs"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Uploader struct {
@@ -80,5 +84,73 @@ func (d *Downloader) Handle(dir string) HandleFunc {
 		header.Set("Pragma", "public")
 		// TODO: 缓存问题...
 		http.ServeFile(ctx.Resp, ctx.Req, dst)
+	}
+}
+
+type StaticFileHandler struct {
+	cache          *expirable.LRU[string, []byte]
+	cacheLimitSize int
+	contentTypeMap map[string]string
+}
+
+func NewStaticFileHandler(cacheSize int, cacheTTL time.Duration) *StaticFileHandler {
+	return &StaticFileHandler{
+		cache:          expirable.NewLRU[string, []byte](cacheSize, nil, cacheTTL),
+		cacheLimitSize: 10 * 1024 * 1024,
+		contentTypeMap: map[string]string{
+			".jpg":  "image/jpeg",
+			".jpe":  "image/jpeg",
+			".jpeg": "image/jpeg",
+			".png":  "image/png",
+			".pdf":  "image/pdf",
+			".html": "text/html",
+		},
+	}
+
+}
+
+func (s *StaticFileHandler) Handle(dir string) HandleFunc {
+	return func(ctx *Context) {
+		file := ctx.PathParams.Get("file")
+
+		// 检查缓存是否有数据
+		data, ok := s.cache.Get(file)
+		if ok {
+			//log.Println("got file from cache")
+			header := ctx.Resp.Header()
+			ext := path.Ext(file)
+			contentType, ok := s.contentTypeMap[ext]
+			if !ok {
+				contentType = "text/plain"
+			}
+			header.Set("Content-Type", contentType)
+			header.Set("Content-Length", strconv.Itoa(len(data)))
+			ctx.WriteString(http.StatusOK, data)
+			return
+		}
+		dst := path.Join(dir, file)
+		data, err := os.ReadFile(dst)
+		if err != nil {
+			log.Println(err)
+			ctx.WriteString(http.StatusInternalServerError, []byte("服务器错误"))
+			return
+		}
+
+		// 保存到缓存中, 大文件不缓存
+		if len(data) <= s.cacheLimitSize {
+			_ = s.cache.Add(file, data)
+		}
+
+		// 返回数据
+		//log.Println("got file from io")
+		header := ctx.Resp.Header()
+		ext := path.Ext(file)
+		contentType, ok := s.contentTypeMap[ext]
+		if !ok {
+			contentType = "text/plain"
+		}
+		header.Set("Content-Type", contentType)
+		header.Set("Content-Length", strconv.Itoa(len(data)))
+		ctx.WriteString(http.StatusOK, data)
 	}
 }
