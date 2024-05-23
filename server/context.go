@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const MAX_INDEX = math.MaxInt - 10
+
 type Context struct {
 	Resp         http.ResponseWriter
 	Req          *http.Request
@@ -272,6 +274,11 @@ func (ctx *Context) JSON(status int, val any) {
 	}
 }
 
+func (ctx *Context) WriteString(code int, msg []byte) {
+	ctx.Resp.WriteHeader(code)
+	_, _ = ctx.Resp.Write(msg)
+}
+
 func (ctx *Context) Next() {
 	ctx.Index++
 	for ctx.Index < len(ctx.HandlerChain) {
@@ -280,20 +287,22 @@ func (ctx *Context) Next() {
 	}
 }
 
-func (ctx *Context) Abort(status int) error {
-	ctx.Index = math.MaxInt - 10
+func (ctx *Context) Abort() {
+	ctx.Index = MAX_INDEX
+}
+
+func (ctx *Context) AbortWithStatus(status int) {
+	ctx.Index = MAX_INDEX
 	ctx.Resp.WriteHeader(status)
 
 	// 用来做trace的时候用的
 	ctx.Set("status", status)
-
-	return nil
 }
 
 func (ctx *Context) AbortJSON(status int, val any) {
 
 	// 避免++溢出的时候成负数了
-	ctx.Index = math.MaxInt - 10
+	ctx.Index = MAX_INDEX
 	ctx.JSON(status, val)
 }
 
