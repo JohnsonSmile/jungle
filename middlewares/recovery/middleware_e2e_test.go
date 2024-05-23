@@ -23,7 +23,7 @@ func TestMiddleware_recovery(t *testing.T) {
 	serv := server.New(":8081")
 	serv.Use(recoveryMiddleware.Build())
 
-	serv.AddRoute(http.MethodGet, "/user", func(ctx *server.Context) {
+	serv.Get("/user", func(ctx *server.Context) {
 		n := 0
 		m := 1 / n
 		log.Println(m)

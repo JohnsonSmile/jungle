@@ -31,7 +31,7 @@ func TestMiddleware_Prometheus(t *testing.T) {
 	serv.Use(promeMiddleware.Build())
 	promeMiddleware.Start(":8082")
 
-	serv.AddRoute(http.MethodGet, "/user", func(ctx *server.Context) {
+	serv.Get("/user", func(ctx *server.Context) {
 		val := rand.Intn(1000) + 1
 		time.Sleep(time.Duration(val) * time.Millisecond)
 		ctx.JSON(http.StatusOK, map[string]any{

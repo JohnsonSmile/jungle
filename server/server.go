@@ -127,4 +127,42 @@ func (s *HTTPServer) Use(middlewares ...HandleFunc) {
 	s.middlewares = append(s.middlewares, middlewares...)
 }
 
+// Extension methods
+
+func (s *HTTPServer) Get(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodGet, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Head(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodHead, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Post(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodPost, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Put(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodPut, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Patch(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodPatch, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Delete(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodDelete, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Connect(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodConnect, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Options(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodOptions, path, handler, middlewares...)
+}
+
+func (s *HTTPServer) Trace(path string, handler HandleFunc, middlewares ...HandleFunc) {
+	s.AddRoute(http.MethodTrace, path, handler, middlewares...)
+}
+
 var _ Server = (*HTTPServer)(nil)

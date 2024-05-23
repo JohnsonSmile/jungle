@@ -19,7 +19,7 @@ func TestMiddleware_Opentelemetry(t *testing.T) {
 	serv := server.New(":8081")
 	serv.Use(tracerMiddleware.Build())
 
-	serv.AddRoute(http.MethodGet, "/user", func(ctx *server.Context) {
+	serv.Get("/user", func(ctx *server.Context) {
 
 		func() {
 			_, span1 := tracer.Start(ctx.Req.Context(), "call goods inventory")
