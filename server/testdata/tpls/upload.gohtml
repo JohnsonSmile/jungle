@@ -1,0 +1,12 @@
+{{/*模版的名字*/}}
+{{define "upload"}}
+<html lang="en">
+<body>
+    <form style="flex: auto;flex-direction: row;align-items: center"
+            action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="myfile"/>
+        <button type="submit">上传</button>
+    </form>
+</body>
+</html>
+{{end}}

@@ -32,8 +32,8 @@ func newRouter() *router {
 func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFunc, handler HandleFunc, middlewares ...HandleFunc) {
 
 	// middle 和 handlers 组合
-	handlerchain := append(servMiddlewares, middlewares...)
-	handlerchain = append(handlerchain, handler)
+	handlerChain := append(servMiddlewares, middlewares...)
+	handlerChain = append(handlerChain, handler)
 	// validate the method must be one of the http.Method
 	if !r.supportedMethod[method] {
 		log.Fatalf("method: %s not supported", method)
@@ -70,7 +70,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 			}
 			if total == idx+1 {
 				cur.starChild.matchedPath = path
-				cur.starChild.handlerChains = handlerchain
+				cur.starChild.handlerChains = handlerChain
 			}
 			cur = cur.starChild
 			continue
@@ -90,7 +90,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 			}
 			if total == idx+1 {
 				cur.paramChild.matchedPath = path
-				cur.paramChild.handlerChains = handlerchain
+				cur.paramChild.handlerChains = handlerChain
 			}
 			cur = cur.paramChild
 			continue
@@ -117,7 +117,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 			// 这个地方可能会忽略掉,导致出问题.
 			if total == idx+1 {
 				cur.matchedPath = path
-				cur.handlerChains = handlerchain
+				cur.handlerChains = handlerChain
 			}
 			continue
 		}
@@ -134,7 +134,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 			// 是叶子节点,绑定调用链
 			if total == idx+1 {
 				next.matchedPath = path
-				next.handlerChains = handlerchain
+				next.handlerChains = handlerChain
 			}
 			if insertIndex != 0 {
 				insertIndex = insertIndex - 1
@@ -161,7 +161,7 @@ func (r *router) AddRoute(method string, path string, servMiddlewares []HandleFu
 		// 是叶子节点,绑定调用链
 		if total == idx+1 {
 			next.matchedPath = path
-			next.handlerChains = handlerchain
+			next.handlerChains = handlerChain
 		}
 		cur.children = append(cur.children, next)
 		cur = next

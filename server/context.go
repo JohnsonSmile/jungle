@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -77,7 +78,7 @@ func (ctx *Context) BindForm(val any) error {
 }
 
 func (ctx *Context) BindQuery(val any) error {
-	if ctx.QueryParams == nil {
+	if len(ctx.QueryParams) == 0 {
 		ctx.QueryParams = ctx.Req.URL.Query()
 	}
 	var data map[string]any = map[string]any{}
@@ -94,7 +95,7 @@ func (ctx *Context) BindQuery(val any) error {
 }
 
 func (ctx *Context) BindHeader(val any) error {
-	if ctx.HeaderParams == nil {
+	if len(ctx.HeaderParams) == 0 {
 		ctx.HeaderParams = url.Values(ctx.Req.Header)
 	}
 	var data map[string]any = map[string]any{}
@@ -122,8 +123,11 @@ func (ctx *Context) FormValue(key string) (result *Result) {
 	}
 }
 
+func (ctx *Context) FormFile(filename string) (file multipart.File, header *multipart.FileHeader, err error) {
+	return ctx.Req.FormFile(filename)
+}
 func (ctx *Context) QueryValue(key string) (result *Result) {
-	if ctx.QueryParams == nil {
+	if len(ctx.QueryParams) == 0 {
 		ctx.QueryParams = ctx.Req.URL.Query()
 	}
 	if ctx.QueryParams.Has(key) {
@@ -148,7 +152,7 @@ func (ctx *Context) PathValue(key string) (result *Result) {
 }
 
 func (ctx *Context) HeaderValue(key string) (result *Result) {
-	if ctx.HeaderParams == nil {
+	if len(ctx.HeaderParams) == 0 {
 		ctx.HeaderParams = url.Values(ctx.Req.Header)
 	}
 	// header 会转换成大写开头
