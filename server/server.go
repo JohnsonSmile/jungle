@@ -18,15 +18,9 @@ type Server interface {
 	Start() error
 	ShutDown() error
 	// AddRoute 添加路由
-	//
-	// - method 方法
-	// - path 路由
-	// - handlers 路由业务回调
 	AddRoute(method string, path string, handler HandleFunc, middlewares ...HandleFunc)
 
 	// Use 添加中间件
-	//
-	// handlers 中间件
 	Use(middlewares ...HandleFunc)
 }
 
@@ -36,15 +30,22 @@ type HTTPServer struct {
 	shutDownTimeout time.Duration
 	router          *router
 	middlewares     []HandleFunc
+	tplEngine       TemplateEngine
 }
 
-func New(addr string) *HTTPServer {
-	return &HTTPServer{
+func New(addr string, opts ...Option) *HTTPServer {
+	serv := &HTTPServer{
 		addr:            addr,
 		shutDownTimeout: time.Second * 15,
 		router:          newRouter(),
 		middlewares:     make([]HandleFunc, 0),
 	}
+
+	for _, opt := range opts {
+		opt(serv)
+	}
+
+	return serv
 }
 
 // AddRoute 添加路由
@@ -54,7 +55,7 @@ func (s *HTTPServer) AddRoute(method string, path string, handler HandleFunc, mi
 
 // ServeHTTP implements Server.
 func (s *HTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := NewContext(r, w)
+	ctx := NewContext(r, w, s.tplEngine)
 	// 查找路由,并实现命中的路由
 	s.serve(ctx)
 }

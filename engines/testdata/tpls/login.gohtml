@@ -1,0 +1,18 @@
+{{/*模版的名字*/}}
+{{define "login"}}
+<html lang="en">
+<body>
+    <form style="flex: auto;flex-direction: row;align-items: center">
+        <label>
+            邮箱:
+            <input placeholder="邮箱" type="text" />
+        </label>
+        <label>
+            密码:
+            <input placeholder="密码" type="password" />
+        </label>
+        <input type="button" onclick="alert('登录中...')" value="登录"/>
+    </form>
+</body>
+</html>
+{{end}}

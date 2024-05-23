@@ -22,13 +22,17 @@ type Context struct {
 	PathParams   url.Values
 	QueryParams  url.Values
 	HeaderParams url.Values
+
 	HandlerChain []HandleFunc
 	Index        int // 当前执行 handler chain 的下标.
-	mux          sync.RWMutex
-	values       map[string]any // 存储值
+
+	mux    sync.RWMutex
+	values map[string]any // 存储值
+
+	tplEngine TemplateEngine
 }
 
-func NewContext(req *http.Request, resp http.ResponseWriter) *Context {
+func NewContext(req *http.Request, resp http.ResponseWriter, tplEngine TemplateEngine) *Context {
 	return &Context{
 		Req:          req,
 		Resp:         resp,
@@ -37,6 +41,7 @@ func NewContext(req *http.Request, resp http.ResponseWriter) *Context {
 		PathParams:   make(url.Values),
 		QueryParams:  make(url.Values),
 		HeaderParams: make(url.Values),
+		tplEngine:    tplEngine,
 	}
 }
 
@@ -304,6 +309,16 @@ func (ctx *Context) AbortJSON(status int, val any) {
 	// 避免++溢出的时候成负数了
 	ctx.Index = MAX_INDEX
 	ctx.JSON(status, val)
+}
+
+// render
+
+func (ctx *Context) Render(tplName string, data any) {
+	dataBytes, err := ctx.tplEngine.Render(ctx.Req.Context(), tplName, data)
+	if err != nil {
+		panic(err)
+	}
+	ctx.WriteString(http.StatusOK, dataBytes)
 }
 
 // cookie
