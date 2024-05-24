@@ -333,15 +333,21 @@ func (ctx *Context) SetCookie(ck *http.Cookie) {
 
 // values
 
-func (c *Context) Get(key string) (val any, exists bool) {
-	c.mux.RLock()
-	defer c.mux.RUnlock()
-	val, exists = c.values[key]
+func (ctx *Context) Get(key string) (val any, exists bool) {
+	ctx.mux.RLock()
+	defer ctx.mux.RUnlock()
+	val, exists = ctx.values[key]
 	return
 }
 
-func (c *Context) Set(key string, val any) {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	c.values[key] = val
+func (ctx *Context) Set(key string, val any) {
+	ctx.mux.Lock()
+	defer ctx.mux.Unlock()
+	ctx.values[key] = val
+}
+
+func (ctx *Context) Del(key string) {
+	ctx.mux.Lock()
+	defer ctx.mux.Unlock()
+	delete(ctx.values, key)
 }
